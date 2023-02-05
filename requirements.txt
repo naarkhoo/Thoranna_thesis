@@ -1,0 +1,4 @@
+opencv-python==4.7.0.68
+colormath==3.0.0
+scikit-learn
+statsmodels

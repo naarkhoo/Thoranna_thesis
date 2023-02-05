@@ -48,11 +48,31 @@ class DotDetector:
     def find_blobs(self, img_no, file_path, sub_dir):
         centers = {}
         params = cv2.SimpleBlobDetector_Params()
+        
         # Change thresholds
-        params.minThreshold = 0
-        params.maxThreshold = 1000
+        params.minThreshold = 30
+        # params.maxThreshold = 1000
+
+        # Filter by circularity
+        params.filterByCircularity = 1
+        params.minCircularity = 0.8
+
+        # Filter by Convexity
+        params.filterByConvexity = True
+        params.minConvexity = 0.9
+        
+        # Filter by area
         params.filterByArea = True
-        params.minArea = 40
+        params.minArea = 3.1415*(20 / 2)**2
+        params.maxArea = 3.1415*(26 / 2)**2
+        
+        # Set minimum distance
+        params.minDistBetweenBlobs = 1
+
+        # Filter by inertia
+        params.filterByInertia = True
+        params.minInertiaRatio = 0.9
+        
         ver = (cv2.__version__).split('.')
         # Set up the detector with default parameters
         if int(ver[0]) < 3:
@@ -63,11 +83,13 @@ class DotDetector:
         # Convert to grayscale
         gray = cv2.imread(file_path, cv2.IMREAD_GRAYSCALE)
         image = cv2.imread(file_path.format(img_no))
+        cv2.imwrite(sub_dir + '/gray{}.jpg'.format(img_no), gray)
 
         # Detect blobs
         keypoints = detector.detect(gray)
         # Extract color from keypoints
         print("Image no: ", img_no)
+        print("Number of keypoints: ", len(keypoints))
         colors = []
         color_centers = []
         for kp in keypoints:
@@ -141,6 +163,8 @@ class DotDetector:
         yellow_on_white = cv2.bitwise_and(image, image, mask=yellow_mask)
 
         im_with_keypoints = image.copy()
+
+        # Yellow mask application
         gray = cv2.cvtColor(yellow_on_white, cv2.COLOR_BGR2GRAY)
         _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
         im_with_keypoints = image.copy()
@@ -153,20 +177,25 @@ class DotDetector:
                     center = (int(x), int(y))
                     # centers["yellow"] = center
                     radius = int(radius)
-                    if radius > 10 and radius < 15:
+                    if radius > 10 and radius < 14:
                         cv2.circle(im_with_keypoints, center, radius, (255, 255, 0), 2)
                         cv2.putText(im_with_keypoints, 'yellow', (center[0], center[1]+15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
                         yellow_found = True
                 else:
                     break
 
+        # Draw rest of the keypoints 
         for i, kp in enumerate(keypoints):
-            im_with_keypoints = cv2.drawKeypoints(im_with_keypoints, [kp], 0, similar_colors[i], cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-            x, y = int(kp.pt[0]), int(kp.pt[1])
-            center = (x, y)
-            if center not in centers.values():
-                centers[similar_colors_names[i]] = center
-            cv2.putText(im_with_keypoints, similar_colors_names[i], (x, y+15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, similar_colors[i], 2)
+            if (kp.size // 2 > 10 and kp.size // 2 < 14):
+                im_with_keypoints = cv2.drawKeypoints(im_with_keypoints, [kp], 0, similar_colors[i], cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+                x, y = int(kp.pt[0]), int(kp.pt[1])
+                center = (x, y)
+                if (center not in centers.values()):
+                    centers[similar_colors_names[i]] = center
+                cv2.putText(im_with_keypoints, similar_colors_names[i], (x, y+15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, similar_colors[i], 2)
+        
+        if len(keypoints) < 5 and not yellow_found:
+            print("not all dots detected in image: ", img_no)
 
         cv2.imwrite(sub_dir + '/color_detected_image{}.jpg'.format(img_no), im_with_keypoints)
         return im_with_keypoints, centers

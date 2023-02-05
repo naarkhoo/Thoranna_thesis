@@ -7,6 +7,7 @@ import numpy as np
 from statsmodels.stats.proportion import proportions_ztest
 
 if __name__ == "__main__":
+    # NOTE: uncomment to run scanner again
     # scanner = Scanner()
     # rootdir = 'data/images'
     # for subdir, dirs, files in os.walk(rootdir):
@@ -16,7 +17,8 @@ if __name__ == "__main__":
     #         print("scanning img no: ", i)
     #         print("in this dir: ", subdir)
     #         image = scanner.warp(f, i, file_path=root+'/scanned/'+folder+'_scanned')
-
+    
+    print("in main")
     dot_detector = DotDetector()
     rootdir = 'data/scanned'
     all_centers = []
