@@ -2,9 +2,9 @@ import torch
 import numpy as np
 from torch.autograd import grad
 import matplotlib.pyplot as plt
-from optimizer import SGDOptimizer
-from kernels import  distance_squared, summed_unscaled_student_t_prop_density
-from misc import to_torch_and_device
+from .optimizer import SGDOptimizer
+from .kernels import  distance_squared, summed_unscaled_student_t_prop_density
+from .misc import to_torch_and_device
 
 if torch.cuda.is_available():
     print("set use cuda")
@@ -44,8 +44,7 @@ class TSTE():
         return batch_size, batches
 
     def forward_step(self, Y, batch_trips):
-         # a batch of triplets
-
+        # a batch of triplets
         batch_Xs = Y[batch_trips, :]  # items involved in the triplet
         prob = self.calculate_tste_probability(batch_Xs[:, 0, :].squeeze(),
                         batch_Xs[:, 1, :].squeeze(),
@@ -94,10 +93,12 @@ if __name__ == "__main__":
 
     imgs= "nist2500_X.txt"
     labels= "mnist2500_labels.txt"
-    msnitdata = MNIST2KDataset(imgs,labels)
+    msnitdata = MNIST2KDataset(imgs, labels)
     labels = list(msnitdata.labels)
 
     triplet_train_dataset = TripletMNIST2K(msnitdata) # Returns triplets of images
+
+    print("this is triplet train dataset: ", triplet_train_dataset)
 
     no_dims:int = 2
     N, D =  42 # 2500, 42 for mnsit

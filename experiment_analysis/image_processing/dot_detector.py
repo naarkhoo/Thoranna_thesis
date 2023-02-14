@@ -34,6 +34,8 @@ class DotDetector:
         self.color_names = color_names
         self.colors = colors
         self.image = cv2.imread(self.file_path.format(self.img_no))
+        self.yellow_found = False
+        self.centers = {}
 
     def get_color_distance(self, color1_rgb, color2_rgb):
         color1 = sRGBColor(*color1_rgb)
@@ -65,7 +67,6 @@ class DotDetector:
         return detector
 
     def detect_blobs(self, detector):
-        centers = {}
         # Convert to grayscale
         gray = cv2.imread(self.file_path, cv2.IMREAD_GRAYSCALE)
 
@@ -94,13 +95,13 @@ class DotDetector:
                     lowest_dist = d
                     most_similar_color = color2
                     most_similar_color_name = self.color_names[i]
-                    if color_centers[j] in centers.values():
-                        centers = {key:val for key, val in centers.items() if val != color_centers[j]}
-                    centers[most_similar_color_name] = color_centers[j]
+                    if color_centers[j] in self.centers.values():
+                        self.centers = {key:val for key, val in self.centers.items() if val != color_centers[j]}
+                    self.centers[most_similar_color_name] = color_centers[j]
 
             similar_colors.append(most_similar_color)
             similar_colors_names.append(most_similar_color_name)
-        return centers, keypoints, similar_colors, similar_colors_names
+        return keypoints, similar_colors, similar_colors_names
     
     def detect_yellow_color_in_image(self, keypoints):
         # Convert image to HSV color space
@@ -122,7 +123,6 @@ class DotDetector:
         _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
         contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
         
-        yellow_found = False
         # If fewer than 5 keypoints are found
         if len(keypoints) < 5:
             for contour in contours:
@@ -130,34 +130,34 @@ class DotDetector:
                 center = (int(x), int(y))
                 radius = int(radius)
                 if 10 < radius < 14:
-                    yellow_found = True
-                    cv2.circle(im_with_keypoints, center, radius, (255, 255, 0), 2)
-                    cv2.putText(im_with_keypoints, 'yellow', (center[0], center[1]+15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (255, 255, 0), 2)
+                    self.yellow_found = True
+                    cv2.circle(im_with_keypoints, center, radius, (0, 255, 255), 2)
+                    cv2.putText(im_with_keypoints, 'yellow', (center[0], center[1]+15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
+                    self.centers["yellow"] = center
                     break
-        return im_with_keypoints, yellow_found
+        return im_with_keypoints
 
-    @staticmethod
-    def draw_keypoints(im_with_keypoints, keypoints, similar_colors, similar_colors_names, centers, yellow_found):
+    def draw_keypoints(self, im_with_keypoints, keypoints, similar_colors, similar_colors_names):
         for i, kp in enumerate(keypoints):
             if kp.size // 2 > 10 and kp.size // 2 < 14:
                 im_with_keypoints = cv2.drawKeypoints(im_with_keypoints, [kp], 0, similar_colors[i], cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
                 x, y = int(kp.pt[0]), int(kp.pt[1])
                 center = (x, y)
-                if center not in centers.values():
-                    centers[similar_colors_names[i]] = center
+                if center not in self.centers.values():
+                    self.centers[similar_colors_names[i]] = center
                 cv2.putText(im_with_keypoints, similar_colors_names[i], (x, y + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, similar_colors[i], 2)
 
-        if len(keypoints) < 5 and not yellow_found:
+        if len(keypoints) < 5 and not self.yellow_found:
             print("Not all dots detected in image.")
 
-        return im_with_keypoints, centers
+        return im_with_keypoints
 
     def save_image(self, image, file_path):
         cv2.imwrite(file_path + '/color_detected_image{}.jpg'.format(self.img_no), image)
 
     def run_blob_detection(self):
         detector = self.get_blob_detector()
-        centers, keypoints, similar_colors, similar_colors_names = self.detect_blobs(detector)
-        image_with_keypoints, yellow_found = self.detect_yellow_color_in_image(keypoints)
-        image_with_keypoints, centers = self.draw_keypoints(image_with_keypoints, keypoints, similar_colors, similar_colors_names, centers, yellow_found)
-        return image_with_keypoints, centers
+        keypoints, similar_colors, similar_colors_names = self.detect_blobs(detector)
+        image_with_keypoints = self.detect_yellow_color_in_image(keypoints)
+        image_with_keypoints = self.draw_keypoints(image_with_keypoints, keypoints, similar_colors, similar_colors_names)
+        return image_with_keypoints

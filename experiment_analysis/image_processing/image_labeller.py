@@ -3,7 +3,7 @@ import numpy as np
 
 class ImageLabeller:
     def __init__(self, image, image_number):
-        self.img = cv2.imread(image)
+        self.img = image
         self.display = self.img.copy()
         self.points = []
         self.colors = []
@@ -31,38 +31,40 @@ class ImageLabeller:
         
         for i, point in enumerate(self.points):
             print("Point", i + 1, ":", point)
-            color = input("Classify point as (br)brown, (bl)blue, (r)red, (g)green, pu(purple), pi(pink), gr(grey), lp(light-pink), o(orange): ")
-            if color == "br":
+            color = input("Classify point as brown, blue, red, green, purple, pink, grey, light-pink, orange: ")
+            if color == "brown":
                 self.colors.append((1, 1, 47))
                 self.color_names.append("brown")
-            elif color == "bl":
+            elif color == "blue":
                 self.colors.append((103, 62, 0))
                 self.color_names.append("blue")
-            elif color == "r":
+            elif color == "red":
                 self.colors.append((0, 1, 128))
                 self.color_names.append("red")
-            elif color == "g":
+            elif color == "green":
                 self.colors.append((17, 84, 1))
                 self.color_names.append("green")
-            elif color == "pu":
+            elif color == "purple":
                 self.colors.append((98, 42, 89))
                 self.color_names.append("purple")
-            elif color == "pi":
+            elif color == "pink":
                 self.colors.append((85, 0, 163))
                 self.color_names.append("pink")
-            elif color == "gr":
+            elif color == "grey":
                 self.colors.append((77, 79, 73))
                 self.color_names.append("grey")
-            elif color == "lp":
+            elif color == "light-pink":
                 self.colors.append((130, 103, 176))
                 self.color_names.append("light-pink")
-            elif color == "o":
+            elif color == "orange":
                 self.colors.append((1, 120, 199))
                 self.color_names.append("orange")
+            elif color == "yellow":
+                self.colors.append((0, 255, 255))
+                self.color_names.append("yellow")
             else:
-                print("Invalid color, defaulting to blue")
-                self.colors.append((0, 0, 255))
-        
+                print("Invalid color")
+
         for point, color, name in zip(self.points, self.colors, self.color_names):
             cv2.circle(self.img, point, 11, color, -1)
             cv2.putText(self.img, name, (point[0], point[1]+15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color, 2)
