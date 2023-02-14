@@ -1,12 +1,17 @@
 import os
 import numpy as np
+import matplotlib.pyplot as plt
+from matplotlib import cm
+import seaborn as sns
 from sklearn.metrics.pairwise import euclidean_distances
+from sklearn.manifold import TSNE
 from statsmodels.stats.proportion import proportions_ztest
 from collections import Counter
 from .image_processing.scanner import Scanner
 from .image_processing.dot_detector import DotDetector
 from .image_processing.triplet_generator import TripletGenerator
 from .image_processing.image_labeller import ImageLabeller
+from .visualizations.tste import TSTE
 
 rootdir = 'experiment_analysis/data/scanned'
 all_centers = []
@@ -83,7 +88,7 @@ if __name__ == "__main__":
     # for i, (_, experiment) in enumerate(centers_dict.items()):
     #     for list_of_centers in experiment:
     #         all_triplets += triplet_generator.generate_triplets(list_of_centers, f'round_{i}')
-    
+
     # # Writing triplets to a text file
     # with open('triplets.txt', 'w') as f:
     #     for triplet in all_triplets:
@@ -95,6 +100,30 @@ if __name__ == "__main__":
         for line in f:
             triplet = tuple(map(int, line.strip().split()))
             triplets.append(triplet)
+    
+    colors = cm.rainbow(np.linspace(0, 1, len(triplets)))
+    triplets_array = np.array(triplets)
 
-    c = Counter(triplets)
-    print(c)
+    # Perform t-SNE to reduce the dimensionality of the data
+    tsne = TSNE(n_components=2, random_state=42)
+    embedding = tsne.fit_transform(triplets_array)
+
+    plt.figure(figsize=(8, 6))
+    # Plot the triplets in the 2D embedding space with color coding
+    for i, triplet in enumerate(triplets):
+        color = colors[0]
+        plt.scatter(embedding[i, 0], embedding[i, 1], color=color, label=str(triplet))
+    plt.legend()
+    plt.show()
+
+    tste = TSTE(N=len(triplets), no_dims=2)
+    embedding = tste.tste_embed(triplets_array)
+    embedding = embedding.cpu().detach().numpy()
+
+    plt.figure(figsize=(8, 6))
+    # Plot the triplets in the 2D embedding space with color coding
+    for i, triplet in enumerate(triplets):
+        color = colors[0]
+        plt.scatter(embedding[i, 0], embedding[i, 1], color=color, label=str(triplet))
+    plt.legend()
+    plt.show()

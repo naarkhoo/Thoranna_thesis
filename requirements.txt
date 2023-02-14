@@ -4,3 +4,8 @@ scikit-learn
 statsmodels
 matplotlib
 torch
+seaborn
+flask
+bokeh
+plotly
+pybloqs
