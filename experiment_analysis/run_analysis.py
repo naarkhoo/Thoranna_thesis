@@ -5,13 +5,12 @@ from matplotlib import cm
 import seaborn as sns
 from sklearn.metrics.pairwise import euclidean_distances
 from sklearn.manifold import TSNE
-from statsmodels.stats.proportion import proportions_ztest
 from collections import Counter
 from .image_processing.scanner import Scanner
 from .image_processing.dot_detector import DotDetector
 from .image_processing.triplet_generator import TripletGenerator
 from .image_processing.image_labeller import ImageLabeller
-from .visualizations.tste import TSTE
+from .visualizations.tste import tste, tste_grad
 
 rootdir = 'experiment_analysis/data/scanned'
 all_centers = []
@@ -105,8 +104,8 @@ if __name__ == "__main__":
     triplets_array = np.array(triplets)
 
     # Perform t-SNE to reduce the dimensionality of the data
-    tsne = TSNE(n_components=2, random_state=42)
-    embedding = tsne.fit_transform(triplets_array)
+    # tsne = TSNE(n_components=2, random_state=42)
+    # embedding = tsne.fit_transform(triplets_array)
 
     plt.figure(figsize=(8, 6))
     # Plot the triplets in the 2D embedding space with color coding
@@ -116,9 +115,7 @@ if __name__ == "__main__":
     plt.legend()
     plt.show()
 
-    tste = TSTE(N=len(triplets), no_dims=2)
-    embedding = tste.tste_embed(triplets_array)
-    embedding = embedding.cpu().detach().numpy()
+    embedding = tste(triplets=triplets_array, no_dims=2, alpha=1, use_log=True)
 
     plt.figure(figsize=(8, 6))
     # Plot the triplets in the 2D embedding space with color coding
