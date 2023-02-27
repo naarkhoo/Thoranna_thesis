@@ -11,7 +11,7 @@ from bokeh.models import (
     Tabs,
 )
 
-from ..visualizations.tste_theano.tste import tste
+from ..packages.tste_theano.tste import tste
 from ..packages.snack.datasets.mnist import MNIST2KDataset, TripletMNIST2K
 
 def load_triplets():
