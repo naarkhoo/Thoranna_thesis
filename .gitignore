@@ -1,5 +1,5 @@
+experiment_analysis/packages/simon-thesis
 experiment_analysis/data
-triplets.txt
 __pycache__
 .ipynb_checkpoints
 .DS_Store

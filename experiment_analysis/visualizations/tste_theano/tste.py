@@ -34,7 +34,7 @@ USING_THEANO = False
 import numpy as np
 
 
-def tste(triplets, no_dims=2, lamb=0, alpha=None, use_log=True, verbose=True, max_iter=1000, save_each_iteration=False, initial_X=None, static_points=np.array([]), normalize_gradient=False, ignore_zeroindexed_error=True):
+def tste(triplets, no_dims=2, lamb=0, alpha=None, use_log=True, verbose=True, max_iter=1000, save_each_iteration=False, initial_X=None, static_points=np.array([]), normalize_gradient=True, ignore_zeroindexed_error=True):
     """Learn the triplet embedding for the given triplets.
 
     Returns an array with shape (max(triplets)+1, no_dims). The i-th

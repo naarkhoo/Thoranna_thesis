@@ -1,11 +1,8 @@
 opencv-python==4.7.0.68
 colormath==3.0.0
-scikit-learn
-statsmodels
-matplotlib
-torch
-seaborn
-flask
-bokeh
-plotly
-pybloqs
+scikit-learn==1.2.1
+matplotlib==3.7.0
+seaborn==0.12.2
+bokeh==3.0.3
+plotly==5.13.0
+pybloqs==1.2.13
