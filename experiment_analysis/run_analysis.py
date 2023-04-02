@@ -1,33 +1,36 @@
+# General imports
 import os
-import prince
 import numpy as np
-import matplotlib.pyplot as plt
-from matplotlib import cm
-import seaborn as sns
 import pandas as pd
 from collections import Counter
+import matplotlib.pyplot as plt
 
+# Scikit-learn imports 
 from sklearn.cluster import AgglomerativeClustering
 from sklearn.metrics.pairwise import euclidean_distances
-from sklearn.manifold import TSNE, MDS
-from sklearn.decomposition import FactorAnalysis, PCA
+from sklearn.manifold import TSNE
+from sklearn.decomposition import PCA
 
-from scipy.spatial.distance import squareform
-
+# Image processing module imports
 from .image_processing.scanner import Scanner
 from .image_processing.dot_detector import DotDetector
 from .image_processing.triplet_generator import TripletGenerator
 from .image_processing.similarity_matrix_generator import SimilarityMatrixGenerator
 from .image_processing.image_labeller import ImageLabeller
 
-rootdir = 'experiment_analysis/data/scanned'
-all_centers = []
-centers_dict = {}
+# Define constants
+COLLECTED_DATA_FOLDER_PATH = 'data/collected_data/'
+GENERATED_DATA_FOLDER_PATH = 'data/generated_data'
+SCANNED_IMAGES_FOLDER_NAME = 'scanned'
+ANNOTATED_IMAGES_FOLDER_NAME = 'blobs'
+N_DESIRED_CENTERS = 5
 
-# Function to modify the requirements
-# for manual revision! 
-def manual_revision_required(im, centers):
-    print("these are the centers: ", centers)
+
+def manual_revision_required(centers):
+    '''
+    Function determines whether manual revision
+    of the detected dots on the napping paper is required. 
+    '''
     # Found too few keypoints
     if len(centers) < 5:
         return True
@@ -36,17 +39,129 @@ def manual_revision_required(im, centers):
         return True
     return False
 
+def run_scanner(rootdir = 'data/collected_data/images', folder_dir='generated_data/scanned', img_suffix='_scanned'):
+    '''
+    Function runs the scanner on images of the napping papers,
+    resulting in warped images being saved in the
+    data/generated_data/scanned/ directory
+    '''
+    scanner = Scanner()
+    for subdir, dirs, files in os.walk(rootdir):
+        for i, file in enumerate(files):
+            f = os.path.join(subdir, file)
+            root, parent, experiment_folder = subdir.split("/")
+            scanner.warp(
+                f, i,
+                file_path=root + '/' + folder_dir + '/' + experiment_folder + img_suffix
+            )
+
+def annotate_data(rootdir = 'data/images', img_suffix='_blobs'):
+    '''
+    Function reads the scanned images, detects and annotates the dots. 
+    '''
+    for subdir, dirs, files in os.walk(rootdir):
+        for i, file in enumerate(files):
+            f = os.path.join(subdir, file)
+            project_folder, root, parent, folder = subdir.split("/")
+            image_file_path = project_folder + root + '/blobs/' + folder.replace('_scanned', '') + img_suffix
+            dot_detector = DotDetector(file_path=f, img_no=i)
+            image = dot_detector.run_blob_detection()
+
+            # Check if manual revision is required
+            if len(dot_detector.centers) == 0 or manual_revision_required(dot_detector.centers):
+                image_labeller = ImageLabeller(image, i)
+                image_labeller.classify_points()
+                manual_centers = image_labeller.points
+                manual_colors = image_labeller.color_names
+                if len(dot_detector.centers) < N_DESIRED_CENTERS:
+                    for color, center in zip(manual_colors, manual_centers):
+                        dot_detector.centers[color] = center
+                elif len(dot_detector.centers.keys()) != len(set(dot_detector.centers.keys())):
+                    min_distance = float('inf')
+                    closest_center = None
+                    closest_color = None
+                    for color, center in zip(manual_colors, manual_centers):
+                        distances = euclidean_distances(center, list(dot_detector.centers.values()))
+                        closest_idx = distances.argmin()
+                        if distances[0][closest_idx] < min_distance:
+                            min_distance = distances[0][closest_idx]
+                            closest_center = center
+                            closest_color = color
+                    for key in list(dot_detector.centers.keys()):
+                        if dot_detector.centers[key] == closest_center:
+                            del dot_detector.centers[key]
+                            dot_detector.centers[closest_color] = closest_center
+                    all_centers.append(dot_detector.centers)
+                    image_labeller.save_image(image_file_path)
+
+            all_centers.append(dot_detector.centers)
+            dot_detector.save_image(image, image_file_path)
+
+        if subdir != 'data/scanned' and subdir != 'data/scanned/diku_images_scanned':
+            centers_dict[subdir] = all_centers
+            all_centers = []
+    return centers
+
+def generate_triplets():
+    '''
+    Function calls the triplet generator to
+    generate triplets from the dot centers
+    '''
+    triplet_generator = TripletGenerator()
+    all_triplets = []
+    for i, (_, experiment) in enumerate(centers_dict.items()):
+        for list_of_centers in experiment:
+            all_triplets += triplet_generator.generate_triplets(list_of_centers, f'round_{i}')
+
+    # Writing triplets to a text file
+    with open('triplets.txt', 'w') as f:
+        for triplet in all_triplets:
+            f.write('{} {} {}\n'.format(*triplet))
+    return all_triplets
+
+def generate_similarity_matrix():
+    '''
+    Function generates a distance matrix from
+    the known centers of the dots on the
+    napping papers
+    '''
+    similarity_matrix_generator = SimilarityMatrixGenerator()
+    similarity_matrices = []
+
+    mat_combined = []
+    ids = []
+    for i, (_, experiment) in enumerate(centers_dict.items()):
+        for list_of_centers in experiment:
+            matrix = similarity_matrix_generator.generate_matrix(list_of_centers, f'round_{i}')
+            # Skip if we have less than 5 keypoints - this only happens in the event of a
+            # study participant putting down less than 5 stickers
+            if len(matrix) != 5:
+                pass
+            else:
+                ids.append(mat.to_dict().keys())
+                mat_combined.append(mat.values)
+
+    # Put the distance matrix into pandas dataframe to book-keep the wine-id's
+    similarity_matrices = []
+    for i, sub_matrix in enumerate(mat_combined):
+        sub_matrix = pd.DataFrame(data=sub_matrix, columns=ids[i], index=ids[i])
+        similarity_matrices.append(sub_matrix)
+
 if __name__ == "__main__":
+    # rootdir = 'experiment_analysis/data/scanned'
+    all_centers = []
+    centers_dict = {}
+
     # NOTE: uncomment to run scanner again
-    # scanner = Scanner()
-    # rootdir = 'data/images'
-    # for subdir, dirs, files in os.walk(rootdir):
-    #     for i, file in enumerate(files):
-    #         f = os.path.join(subdir, file)
-    #         root, parent, folder = subdir.split("/")
-    #         print("scanning img no: ", i)
-    #         print("in this dir: ", subdir)
-    #         image = scanner.warp(f, i, file_path=root+'/scanned/'+folder+'_scanned')
+    scanner = Scanner()
+    rootdir = 'data/images'
+    for subdir, dirs, files in os.walk(rootdir):
+        for i, file in enumerate(files):
+            f = os.path.join(subdir, file)
+            root, parent, folder = subdir.split("/")
+            print("scanning img no: ", i)
+            print("in this dir: ", subdir)
+            image = scanner.warp(f, i, file_path=root+'/scanned/'+folder+'_scanned')
 
     for subdir, dirs, files in os.walk(rootdir):
         for i, file in enumerate(files):
@@ -142,21 +257,21 @@ if __name__ == "__main__":
         elif sub_mat_max>max_dist:
             max_dist = sub_mat_max
 
-    red = False
+    RED = False
     for sub_mat in similarity_matrices:
         for i in sub_mat.index:
             if i in list(range(20, 31)):
                 i_idx = i - 10
-                red = False
+                RED = False
             else:
-                red = True
+                RED = True
                 i_idx = i
             for j in sub_mat.columns:
                 if j in list(range(20, 31)):
                     j_idx = j - 10
-                    red = False
+                    RED = False
                 else:
-                    red = True
+                    RED = True
                     j_idx = j
                 if red:
                     red_wine_matrix[i_idx][j_idx] += sub_mat[i][j] / max_dist

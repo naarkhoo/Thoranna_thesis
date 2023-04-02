@@ -7,8 +7,7 @@ from bokeh.layouts import gridplot
 from bokeh.resources import CDN
 from bokeh.models import (
     ColumnDataSource, HoverTool, PanTool, WheelZoomTool,
-    DataTable, TableColumn, TabPanel,
-    Tabs,
+    DataTable, TableColumn, TabPanel, Tabs,
 )
 
 from ..packages.tste_theano.tste import tste
