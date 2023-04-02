@@ -72,8 +72,6 @@ class DotDetector:
 
         # Detect blobs
         keypoints = detector.detect(gray)
-        print("Image no: ", self.img_no)
-        print("Number of keypoints: ", len(keypoints))
 
         colors = []
         color_centers = []

@@ -1,14 +1,28 @@
 # Imports
 import cv2
 import numpy as np
+import os
+import subprocess
+
+def convert_heic_to_jpg(heic_path, jpg_path):
+    subprocess.run(['sips', '-s', 'format', 'jpeg', heic_path, '--out', jpg_path])
 
 class Scanner:
     def __init__(self):
         pass
 
     def warp(self, img_src, img_no, file_path):
+        print("image source: ", img_src)
+        if img_src.split(".")[-1] == "HEIC":
+            print("in here")
+            # Converting HEIC to JPG
+            jpg_img_src = ".." + img_src.split(".")[-2] + ".JPG"
+            convert_heic_to_jpg(img_src, jpg_img_src)
+        else:
+            jpg_img_src = img_src
+
         # read
-        img = cv2.imread(img_src)
+        img = cv2.imread(jpg_img_src)
         orig_img = img.copy()
 
         # convert img to grayscale
@@ -68,12 +82,10 @@ class Scanner:
         final = cv2.warpPerspective(orig_img, M, (destination_corners[2][0], destination_corners[2][1]),
                                     flags=cv2.INTER_LINEAR)
         final_height, final_width = final.shape[:2]
-        print("going to save image at: ", file_path + '/scanned_image_no{}.jpg')
+
         if (final_height<800 and final_width<600) or (final_height<600 and final_width<800):
-            cv2.imwrite(file_path + '/scanned_image_no{}.jpg'.format(img_no), orig_img)
             return orig_img
         else:
-            cv2.imwrite(file_path + '/scanned_image_no{}.jpg'.format(img_no), final)
             return final
     
     def order_points(self, pts):
@@ -86,7 +98,6 @@ class Scanner:
         rect[0] = pts[np.argmin(s)]
         # Bottom-right point will have the largest sum.
         rect[2] = pts[np.argmax(s)]
-    
         diff = np.diff(pts, axis=1)
         # Top-right point will have the smallest difference.
         rect[1] = pts[np.argmin(diff)]
@@ -109,3 +120,23 @@ class Scanner:
         # Final destination co-ordinates.
         destination_corners = [[0, 0], [maxWidth, 0], [maxWidth, maxHeight], [0, maxHeight]]
         return self.order_points(destination_corners)
+    
+
+if __name__ == "__main__":
+    scanner = Scanner()
+    rootdir = '../data/collected_data'
+    savedir = '../data/generated_data/scanned/'
+    for subdir, dirs, files in os.walk(rootdir):
+        if not '.DS_Store' in files:
+            print("these are the fiels: ", files)
+            for i, file in enumerate(files):
+                f = os.path.join(subdir, file)
+                _, _, root, parent, folder = subdir.split("/")
+                image = scanner.warp(f, i, file_path=root+'/scanned/'+folder+'_scanned')
+                directory = savedir + parent + '/' + folder + '/'
+                # Check if the directory exists
+                if not os.path.exists(directory):
+                    # If it doesn't exist, create it
+                    os.makedirs(directory)
+                print(directory + 'scanned_image_no{}.jpg')
+                cv2.imwrite(savedir + parent + '/' + folder + '/scanned_image_no{}.jpg'.format(i), image)
