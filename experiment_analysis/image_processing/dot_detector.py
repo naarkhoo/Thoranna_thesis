@@ -13,18 +13,17 @@ COLORS = {
     "blue": [103, 62, 0],
     "bright-blue": [153, 166, 61],
     "red": [42, 98, 153],
-    "green": [17, 84, 1],
+    "green": [43, 124, 34],
     "dark-purple": [80, 83, 78],
     "pink": [97, 95, 185],
-    "grey": [77, 79, 73],
-    "light-pink": [97, 95, 185],
+    "grey": [86, 134, 86],
+    "light-pink": [125, 154, 162],
     "orange": [57, 180, 194],
     "gold": [73, 165, 141],
     "light-purple": [117, 148, 120],
-    "black": [34, 26, 5],
+    "black": [36, 86, 48],
     "bright-green": [70, 204, 85],
     "yellow": [61, 205, 182],
-    # "light-blue": [31, 143, 193]
 }
 
 class ImageProcessor:
@@ -111,7 +110,7 @@ class DotDetector:
         params.maxArea = 3.1415 * (30 / 2) ** 2
         
         # Keep the minimum distance between blobs as 1
-        params.minDistBetweenBlobs = 1
+        # params.minDistBetweenBlobs = 1
         
         # Adjust the inertia constraint
         params.filterByInertia = True
@@ -377,8 +376,28 @@ def detect_colored_blobs(image_path):
     lower_range = np.array([0, 30, 30])
     upper_range = np.array([255, 255, 255])
 
-    # Create a mask for non-white colors
     mask = cv2.inRange(hsv_image, lower_range, upper_range)
+
+    # Create a mask for non-white colors
+    # mask = cv2.inRange(hsv_image, lower_range, upper_range)
+
+    # Define lower and upper range for grey colors
+    lower_grey = np.array([0, 0, 10])
+    upper_grey = np.array([180, 50, 130])
+
+    # Create a mask for grey colors
+    grey_mask = cv2.inRange(hsv_image, lower_grey, upper_grey)
+
+    # Define lower and upper range for black colors
+    lower_black = np.array([0, 0, 0])
+    upper_black = np.array([180, 255, 40])
+
+    # Create a mask for black colors
+    black_mask = cv2.inRange(hsv_image, lower_black, upper_black)
+
+    # Merge masks for non-white, grey, and black colors
+    mask = cv2.bitwise_or(mask, grey_mask)
+    mask = cv2.bitwise_or(mask, black_mask)
 
     params = cv2.SimpleBlobDetector_Params()
         
@@ -395,7 +414,7 @@ def detect_colored_blobs(image_path):
         
     # # Adjust the area constraint
     params.filterByArea = True
-    params.minArea = 3.1415 * (50 / 2) ** 2
+    params.minArea = 3.1415 * (60 / 2) ** 2
     params.maxArea = 3.1415 * (100 / 2) ** 2
         
     # # Keep the minimum distance between blobs as 1
@@ -423,6 +442,12 @@ def detect_colored_blobs(image_path):
         cv2.circle(image, (int(x), int(y)), radius, (0, 255, 0), circle_width)
     
     annotated_image = annotate_keypoints(image, keypoints)
+    # Display the image in a window named 'image'
+    cv2.imshow("image", annotated_image)
+
+    # Wait for any key press and close the window
+    cv2.waitKey(0)
+    cv2.destroyAllWindows()
     return annotated_image
 
 
