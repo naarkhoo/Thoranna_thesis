@@ -4,14 +4,63 @@ from ..packages.colormath.color_conversions import convert_color
 from ..packages.colormath.color_diff import delta_e_cie2000
 import numpy as np
 import os
-import math
 
+# NOTE: wine no. 70 is ribena juice and it was handled in experiment_dtu_20_03/round_1
+
+# NOTE: wine ID 1 ('experiment_dtu_13_03'/round_1) is also wine ID 19 ('experiment_dtu_13_03'/round_2)
+# NOTE: wine ID 30 ('experiment_dtu_14_03'/round_1) is also wine ID 43 ('experiment_dtu_15_03'/round_1)
+# NOTE: wine ID 121 ('experiment_vivino_31_03'/round_1) is also wine ID 99 ('experiment_pioneer_centre_23rd'/round_1+round_2)
+# NOTE: wine ID 63 ('experiment_dtu_15_03'/round_2) is also wine ID 109 ('experiment_pioneer_centre_23rd'/round_1+round_2)
+# NOTE: wine ID 25 ('experiment_dtu_14_03'/round_1) is also wine ID 107 ('experiment_pioneer_centre_23rd'/round_1+round_2)
+# NOTE wine ID 114 ('experiment_pioneer_centre_23rd'/round_3) is also wine ID 39 ('experiment_dtu_14_03'/round_1+round_2)
+# NOTE: wine ID 73 ('experiment_dtu_20_03'/round_1+round_2) is also wine ID 9 ('experiment_dtu_13_03'/round_1)
+# NOTE: wine ID 58 ('experiment_dtu_15_03'/round_2) is also wine ID 40 ('experiment_dtu_15_03'/round_1)
+
+WINES = {'experiment_dtu_13_03': {'round_1': {'yellow': 0, 'brown': 1, 'grey': 2, 'orange': 3,
+                                              'light-purple': 4, 'green': 5, 'red': 7, 'pink': 8, 'blue': 9},
+                                  'round_2': {'yellow': 10, 'brown': 11, 'grey': 12, 'orange': 13, 'light-purple': 14,
+                                              'green': 15, 'purple': 16, 'red': 17, 'pink': 18, 'blue': 19,
+                                              'black': 20, 'gold': 21, 'bright-green': 22, 'white': 23, 'light-pink': 24}},
+        'experiment_dtu_14_03': {'round_1': {'yellow': 25, 'brown': 26, 'grey': 27, 'orange': 28, 'light-purple': 29, 'green': 30,
+                                             'purple': 31, 'red': 32, 'pink': 33, 'blue': 34, 'black': 35, 'gold': 36,
+                                             'bright-green': 37, 'white': 38, 'light-pink': 39},
+                                'round_2': {'yellow': 25, 'brown': 26, 'grey': 27, 'orange': 28, 'light-purple': 29, 'green': 30,
+                                            'purple': 31, 'red': 32, 'pink': 33, 'blue': 34, 'black': 35, 'gold': 36,
+                                            'bright-green': 37, 'white': 38, 'light-pink': 39}},
+        'experiment_dtu_15_03': {'round_1': {'yellow': 40, 'brown': 41, 'grey': 42, 'orange': 43, 'light-purple': 44, 'green': 45,
+                                             'purple': 46, 'red': 47, 'pink': 48, 'blue': 49},
+                                 'round_2': {'yellow': 50, 'brown': 51, 'grey': 52, 'orange': 53,
+                                             'purple': 54, 'green': 55, 'light-purple': 56, 'red': 57, 'blue': 58,
+                                             'pink': 59, 'bright-green': 60, 'black': 61, 'gold': 62, 'white': 63, 'light-pink': 64}},
+        'experiment_dtu_20_03': {'round_1': {'blue': 65, 'black': 66, 'purple': 67, 'light-pink': 68, 'gold': 69, 'red': 70,
+                                             'yellow': 71, 'white': 72, 'pink': 73, 'orange': 74, 'brown': 75, 'bright-green': 76,
+                                             'grey': 77, 'green': 78, 'light-purple': 79},
+                                'round_2': {'blue': 65, 'black': 66, 'purple': 67, 'light-pink': 68, 'gold': 69, 'red': 70,
+                                            'yellow': 71, 'white': 72, 'pink': 73, 'orange': 74, 'brown': 75, 'bright-green': 76,
+                                            'grey': 77, 'green': 78, 'light-purple': 70}},
+        'experiment_dtu_21_03': {'round_1': {'blue': 80, 'gold': 81, 'green': 82, 'brown': 83, 'bright-green': 84, 'red': 85, 'white': 86,
+                                             'yellow': 87, 'light-purple': 88, 'black': 89, 'pink': 90, 'grey': 91, 'light-pint': 92,
+                                             'orange': 93, 'purple': 94},
+                                'round_2': {'blue': 80, 'gold': 81, 'green': 82, 'brown': 83, 'bright-green': 84, 'red': 85, 'white': 86,
+                                             'yellow': 87, 'light-purple': 88, 'black': 89, 'pink': 90, 'grey': 91, 'light-pint': 92,
+                                             'orange': 93, 'purple': 94}},
+        'experiment_pioneer_centre_23rd': {'round_1': {'light-purple': 95, 'white': 96, 'brown': 97, 'green': 98, 'pink': 99, 'yellow': 100,
+                                                       'bright-green': 101, 'gold': 102, 'purple': 103, 'red': 104, 'grey': 105, 'blue': 106,
+                                                       'pink': 107, 'orange': 108, 'black': 109},
+                                            'round_2': {'light-purple': 95, 'white': 96, 'brown': 97, 'green': 98, 'pink': 99, 'yellow': 100,
+                                                       'bright-green': 101, 'gold': 102, 'purple': 103, 'red': 104, 'grey': 105, 'blue': 106,
+                                                       'pink': 107, 'orange': 108, 'black': 109},
+                                            'round_3': {'light-purple': 110, 'white': 111, 'brown': 112, 'light-pink': 113, 'green': 114, 'yellow': 115,
+                                                        'gold': 116, 'purple': 117, 'red': 118, 'grey': 119}},
+        'experiment_vivino_31_03': {'round_1': {'yellow': 121, 'red': 122, 'black': 123, 'orange': 124, 'purple': 125, 'pink': 126,
+                                                'blue': 127, 'light-purple': 128, 'gold': 129, 'bright-green': 130}}
+}
 
 # Absolute values extracted from a random image/s
 COLORS = {
     "brown": [30, 75, 76],
-    "blue": [103, 62, 0],
-    "bright-blue": [153, 166, 61],
+    "blue": [73, 90, 24],
+    # "bright-blue": [153, 166, 61],
     "red": [42, 98, 153],
     "green": [43, 124, 34],
     "dark-purple": [80, 83, 78],
@@ -19,340 +68,12 @@ COLORS = {
     "grey": [86, 134, 86],
     "light-pink": [125, 154, 162],
     "orange": [57, 180, 194],
-    "gold": [73, 165, 141],
+    "gold": [41, 117, 89],
     "light-purple": [117, 148, 120],
     "black": [36, 86, 48],
     "bright-green": [70, 204, 85],
     "yellow": [61, 205, 182],
 }
-
-class ImageProcessor:
-    def __init__(self, image):
-        self.image = image
-        self.centers = {}
-
-    def detect_colors_in_image(self):
-        hsv_image = cv2.cvtColor(self.image, cv2.COLOR_BGR2HSV)
-        im_with_keypoints = self.image.copy()
-
-        for color_name, color_bgr in COLORS.items():
-            lower_hsv, upper_hsv = self.get_color_hsv_range(color_bgr)
-
-            color_mask = cv2.inRange(hsv_image, lower_hsv, upper_hsv)
-            color_on_white = cv2.bitwise_and(self.image, self.image, mask=color_mask)
-
-            gray = cv2.cvtColor(color_on_white, cv2.COLOR_BGR2GRAY)
-            _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
-            contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-            for contour in contours:
-                (x, y), radius = cv2.minEnclosingCircle(contour)
-                center = (int(x), int(y))
-                radius = int(radius)
-
-                # if self.is_valid_radius(radius):  # You can adjust this condition based on your needs
-                cv2.circle(im_with_keypoints, center, radius, color_bgr, 4)
-                cv2.putText(im_with_keypoints, color_name, (center[0], center[1] + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color_bgr, 4)
-                self.centers[color_name] = center
-                break
-
-        return im_with_keypoints
-
-    def get_color_hsv_range(self, color_bgr):
-        color_hsv = cv2.cvtColor(np.uint8([[color_bgr]]), cv2.COLOR_BGR2HSV)[0][0]
-        lower_hsv = np.array([color_hsv[0] - 10, max(color_hsv[1] - 40, 100), max(color_hsv[2] - 40, 100)], dtype=np.uint8)
-        upper_hsv = np.array([color_hsv[0] + 10, 255, 255], dtype=np.uint8)
-        return lower_hsv, upper_hsv
-
-    def is_valid_radius(self, radius):
-        return 10 < radius < 14
-
-class DotDetector:
-    def __init__(self, file_path: str, img_no: int, colors=COLORS):
-        self.file_path = file_path
-        self.img_no = img_no
-        self.colors = colors
-        self.image = cv2.imread(self.file_path.format(self.img_no))
-        self.yellow_found = False
-        self.centers = {}
-        self.color_list = [(color_name, *self.get_color_bounds(np.array(color_value, dtype=np.uint8))) for color_name, color_value in COLORS.items()]
-    
-    def get_color_bounds(self, color_value):
-        lower_bound = np.array([max(channel - 20, 0) for channel in color_value], dtype=np.uint8)
-        upper_bound = np.array([min(channel + 20, 255) for channel in color_value], dtype=np.uint8)
-        return lower_bound, upper_bound
-
-    def get_color_distance(self, color1_rgb, color2_rgb):
-        color1 = sRGBColor(*color1_rgb)
-        color2 = sRGBColor(*color2_rgb)
-        color1_lab = convert_color(color1, LabColor)
-        color2_lab = convert_color(color2, LabColor)
-        delta_e = delta_e_cie2000(color1_lab, color2_lab)
-        return delta_e
-
-    def get_blob_detector(self, min_threshold=10):
-        params = cv2.SimpleBlobDetector_Params()
-        
-        # Adjust the threshold value
-        params.minThreshold = min_threshold
-        
-        # Relax the circularity constraint
-        params.filterByCircularity = True
-        params.minCircularity = 0.6
-        
-        # Relax the convexity constraint
-        params.filterByConvexity = True
-        params.minConvexity = 0.7
-        
-        # Adjust the area constraint
-        params.filterByArea = True
-        params.minArea = 3.1415 * (10 / 2) ** 2
-        params.maxArea = 3.1415 * (30 / 2) ** 2
-        
-        # Keep the minimum distance between blobs as 1
-        # params.minDistBetweenBlobs = 1
-        
-        # Adjust the inertia constraint
-        params.filterByInertia = True
-        params.minInertiaRatio = 0.5
-        
-        # Disable the color filter
-        params.filterByColor = False
-
-        ver = (cv2.__version__).split('.')
-        if int(ver[0]) < 3:
-            detector = cv2.SimpleBlobDetector(params)
-        else:
-            detector = cv2.SimpleBlobDetector_create(params)
-        
-        return detector
-
-    def detect_gold_color_in_image(self):
-        # Convert image to HSV color space
-        hsv_image = cv2.cvtColor(self.image, cv2.COLOR_BGR2HSV)
-
-        # Define gold color range in HSV
-        lower_gold = (15, 100, 150)
-        upper_gold = (30, 255, 255)
-
-        # Get only gold pixels
-        gold_mask = cv2.inRange(hsv_image, lower_gold, upper_gold)
-        gold_on_white = cv2.bitwise_and(self.image, self.image, mask=gold_mask)
-
-        # Make a copy of the original image
-        im_with_keypoints = self.image.copy()
-
-        # Apply gold mask
-        gray = cv2.cvtColor(gold_on_white, cv2.COLOR_BGR2GRAY)
-        _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        for contour in contours:
-            (x, y), radius = cv2.minEnclosingCircle(contour)
-            center = (int(x), int(y))
-            radius = int(radius)
-            if 10 < radius < 14:
-                cv2.circle(im_with_keypoints, center, radius, (0, 215, 255), 2)
-                cv2.putText(im_with_keypoints, 'gold', (center[0], center[1] + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 215, 255), 2)
-                self.centers["gold"] = center
-                break
-
-        return im_with_keypoints
-    
-    def detect_blobs(self, detector):
-        # Convert to HSV color space
-        hsv_image = cv2.cvtColor(self.image, cv2.COLOR_BGR2HSV)
-
-        # Loop through a range of threshold values
-        for threshold_value in range(40, 150, 10):
-            # Threshold the saturation channel
-            saturation_channel = hsv_image[:, :, 1]
-            _, binary_mask = cv2.threshold(saturation_channel, threshold_value, 255, cv2.THRESH_BINARY)
-
-            # Apply morphological operations
-            kernel = np.ones((3, 3), np.uint8)
-            binary_mask = cv2.erode(binary_mask, kernel, iterations=1)
-            binary_mask = cv2.dilate(binary_mask, kernel, iterations=2)
-
-            # Apply the binary mask to the grayscale image
-            gray = cv2.imread(self.file_path, cv2.IMREAD_GRAYSCALE)
-            gray = cv2.bitwise_and(gray, binary_mask)
-
-            # Detect blobs
-            keypoints = detector.detect(gray)
-
-            # Check if at least 4 keypoints are detected
-            if len(keypoints) >= 4:
-                break
-        
-        # Apply morphological operations
-        # kernel = np.ones((3, 3), np.uint8)
-        # binary_mask = cv2.erode(binary_mask, kernel, iterations=1)
-        # binary_mask = cv2.dilate(binary_mask, kernel, iterations=2)
-
-        # # Apply the binary mask to the grayscale image
-        # gray = cv2.imread(self.file_path, cv2.IMREAD_GRAYSCALE)
-        # gray = cv2.bitwise_and(gray, binary_mask)
-
-        # # Detect blobs
-        # keypoints = detector.detect(gray)
-
-        colors = []
-        color_centers = []
-        for kp in keypoints:
-            x, y = int(kp.pt[0]), int(kp.pt[1])
-            colors.append(self.image[y][x])
-            color_centers.append((x, y))
-
-        detected_colors = {}
-        remaining_colors = self.colors.copy()
-        for j, color1 in enumerate(colors):
-            lowest_dist = float("inf")
-            # most_similar_color = None
-            most_similar_color_name = None
-
-            for color_name, color2 in self.colors.items():
-                d = self.get_color_distance(color1, color2)
-                if d < lowest_dist:
-                    lowest_dist = d
-                    most_similar_color = color2
-                    most_similar_color_name = color_name
-            
-            # Check if the detected color is red and if it's close enough to brown
-            if most_similar_color_name == "red":
-                brown_distance = self.get_color_distance(color1, self.colors["brown"])
-                threshold = 80  # Set the threshold value according to your needs
-                if brown_distance < threshold:
-                    most_similar_color_name = "brown"
-                    # most_similar_color = remaining_colors["brown"]
-                    lowest_dist = brown_distance
-            # Check if the detected color is pink and if it's close enough to red
-            elif most_similar_color_name == "pink":
-                red_distance = self.get_color_distance(color1, self.colors["red"])  # Use self.colors instead of remaining_colors
-                threshold = 30  # Set the threshold value according to your needs
-                if red_distance < threshold:
-                    most_similar_color_name = "red"
-                    # most_similar_color = self.colors["red"]
-                    lowest_dist = red_distance
-            # Check if the detected color is light-pink and if it's close enough to grey
-            elif most_similar_color_name == "light-pink":
-                grey_distance = self.get_color_distance(color1, self.colors["grey"])  # Use self.colors instead of remaining_colors
-                threshold = 50  # Set the threshold value according to your needs
-                if grey_distance < threshold:
-                    most_similar_color_name = "grey"
-                    # most_similar_color = self.colors["grey"]
-                    lowest_dist = grey_distance
-            # Add a threshold check for brown and black
-            elif most_similar_color_name == "brown":
-                black_distance = self.get_color_distance(color1, self.colors["black"])
-                threshold = 120  # Set the threshold value according to your needs
-                if black_distance < threshold:
-                    most_similar_color_name = "black"
-                    # most_similar_color = self.colors["black"]
-                    lowest_dist = black_distance
-
-            detected_colors[most_similar_color_name] = lowest_dist
-            self.centers[most_similar_color_name] = color_centers[j]
-
-            if most_similar_color_name in remaining_colors:
-                # Remove the detected color from the remaining colors to prevent duplicate detection
-                del remaining_colors[most_similar_color_name]
-
-        return keypoints, detected_colors, list(detected_colors.keys())
-
-    def detect_yellow_color_in_image(self):
-        # Convert image to HSV color space
-        hsv_image = cv2.cvtColor(self.image, cv2.COLOR_BGR2HSV)
-
-        # Define yellow color range in HSV
-        lower_yellow = (20, 100, 100)
-        upper_yellow = (40, 255, 255)
-
-        # Get only yellow pixels
-        yellow_mask = cv2.inRange(hsv_image, lower_yellow, upper_yellow)
-        yellow_on_white = cv2.bitwise_and(self.image, self.image, mask=yellow_mask)
-
-        # Make a copy of the original image
-        im_with_keypoints = self.image.copy()
-
-        # Apply yellow mask
-        gray = cv2.cvtColor(yellow_on_white, cv2.COLOR_BGR2GRAY)
-        _, binary = cv2.threshold(gray, 127, 255, cv2.THRESH_BINARY)
-        contours, _ = cv2.findContours(binary, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
-
-        for contour in contours:
-            (x, y), radius = cv2.minEnclosingCircle(contour)
-            center = (int(x), int(y))
-            radius = int(radius)
-            if 10 < radius < 14:
-                self.yellow_found = True
-                cv2.circle(im_with_keypoints, center, radius, (0, 255, 255), 2)
-                cv2.putText(im_with_keypoints, 'yellow', (center[0], center[1] + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, (0, 255, 255), 2)
-                self.centers["yellow"] = center
-                break
-
-        return im_with_keypoints
-
-    def draw_keypoints(self, im_with_keypoints, keypoints, similar_colors, similar_colors_names):
-        for i, kp in enumerate(keypoints):
-            try:
-                color_name = similar_colors_names[i]
-                color_rgb = similar_colors[color_name]
-                if kp.size // 2 > 10 and kp.size // 2 < 14:
-                    im_with_keypoints = cv2.drawKeypoints(im_with_keypoints, [kp], 0, color_rgb, cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-                    x, y = int(kp.pt[0]), int(kp.pt[1])
-                    center = (x, y)
-                    if center not in self.centers.values():
-                        self.centers[color_name] = center
-                    cv2.putText(im_with_keypoints, color_name, (x, y + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color_rgb, 2)
-            except IndexError:
-                cv2.drawKeypoints(im_with_keypoints, [kp], 0, color_rgb, cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
-                x, y = int(kp.pt[0]), int(kp.pt[1])
-                center = (x, y)
-                color_rgb = (255, 255, 0)
-                cv2.putText(im_with_keypoints, 'undefined', (x, y + 15), cv2.FONT_HERSHEY_SIMPLEX, 0.5, color_rgb, 2)
-
-        if len(keypoints) < 5 and not self.yellow_found:
-            print("Not all dots detected in image.")
-
-        return im_with_keypoints
-
-    # def save_image(self, image, file_path):
-    #     print("saving the image")
-    #     cv2.imwrite(file_path + '/color_detected_image{}.jpg'.format(self.img_no), image)
-
-    def run_blob_detection(self):
-        detector = self.get_blob_detector()
-
-        # Detect yellow color in the image
-        image_with_yellow = self.detect_yellow_color_in_image()
-
-        # Detect gold color in the image
-        image_with_gold = self.detect_gold_color_in_image()
-
-        # Detect other blobs and filter out keypoints close to the yellow center
-        yellow_center = self.centers.get("yellow")
-        gold_center = self.centers.get("gold")
-
-        # Use image_with_gold as input for the detect_blobs function
-        keypoints, similar_colors, similar_colors_names = self.detect_blobs(detector)
-
-        # Filter out keypoints close to the yellow and gold centers
-        if yellow_center is not None or gold_center is not None:
-            filtered_keypoints = []
-            for kp in keypoints:
-                x, y = int(kp.pt[0]), int(kp.pt[1])
-                if yellow_center is not None and math.sqrt((x - yellow_center[0]) ** 2 + (y - yellow_center[1]) ** 2) > 15:
-                    filtered_keypoints.append(kp)
-                elif gold_center is not None and math.sqrt((x - gold_center[0]) ** 2 + (y - gold_center[1]) ** 2) > 15:
-                    filtered_keypoints.append(kp)
-        else:
-            filtered_keypoints = keypoints
-
-        # Use image_with_gold as input for the draw_keypoints function
-        image_with_keypoints = self.draw_keypoints(image_with_gold, filtered_keypoints, similar_colors, similar_colors_names)
-
-        return image_with_keypoints
 
 def get_color_distance(color1_rgb, color2_rgb):
     color1 = sRGBColor(*color1_rgb)
@@ -441,29 +162,33 @@ def detect_colored_blobs(image_path):
         radius = int(keypoint.size / 2)
         cv2.circle(image, (int(x), int(y)), radius, (0, 255, 0), circle_width)
     
-    annotated_image = annotate_keypoints(image, keypoints)
+    annotated_image, keypoint_annotations = annotate_keypoints(image, keypoints)
     # Display the image in a window named 'image'
-    cv2.imshow("image", annotated_image)
+    # cv2.imshow("image", annotated_image)
 
     # Wait for any key press and close the window
-    cv2.waitKey(0)
-    cv2.destroyAllWindows()
-    return annotated_image
+    # cv2.waitKey(0)
+    # cv2.destroyAllWindows()
+    return {"image": annotated_image, "keypoints": keypoints, "annotations": keypoint_annotations}
 
 
-def closest_color(rgb):
-    min_diff = float('inf')
-    closest_color_name = None
+def closest_colors(rgb):
+    color_distances = []
+
     for color_name, color_rgb in COLORS.items():
-        # diff = np.linalg.norm(np.array(rgb) - np.array(color_rgb))
         diff = get_color_distance(rgb, color_rgb)
-        if diff < min_diff:
-            min_diff = diff
-            closest_color_name = color_name
-    return closest_color_name
+        color_distances.append((color_name, diff))
+
+    sorted_colors = sorted(color_distances, key=lambda x: x[1])
+    return sorted_colors
+
 
 def annotate_keypoints(image, keypoints):
     annotated_image = image.copy()
+    color_occurrences = {}
+    keypoint_annotations = {}
+    shininess_threshold = 500  # Adjust this value based on your requirement
+
     for keypoint in keypoints:
         x, y = int(keypoint.pt[0]), int(keypoint.pt[1])
         radius = int(keypoint.size / 2)
@@ -471,26 +196,84 @@ def annotate_keypoints(image, keypoints):
 
         if roi.size > 0:
             avg_color = np.mean(roi, axis=(0, 1))
-            print("Average color: ", avg_color)
-            closest_color_name = closest_color(avg_color)
-            print("closest color name: ", closest_color_name)
+            min_color = np.min(roi, axis=(0, 1))
+            max_color = np.max(roi, axis=(0, 1))
+            color_difference = np.max(max_color - min_color)
+            # print("color difference: ", color_difference)
 
-            # Draw a circle around the keypoint
-            cv2.circle(annotated_image, (x, y), radius, (0, 255, 0), 2)
+            if color_difference >= shininess_threshold:
+                annotation = "gold"
+            else:
+                sorted_colors = closest_colors(avg_color)
+                closest_color_name, closest_color_distance = sorted_colors[0]
+                if closest_color_name in color_occurrences:
+                    prev_keypoint, prev_closest_distance = color_occurrences[closest_color_name]
+                    if closest_color_distance < prev_closest_distance:
+                        for color_name, distance in sorted_colors[1:]:
+                            if color_name not in color_occurrences:
+                                keypoint_annotations[prev_keypoint] = color_name
+                                break
+                        annotation = closest_color_name
+                        color_occurrences[closest_color_name] = (keypoint, closest_color_distance)
+                    else:
+                        for color_name, distance in sorted_colors[1:]:
+                            if color_name not in color_occurrences:
+                                annotation = color_name
+                                color_occurrences[color_name] = (keypoint, distance)
+                                break
+                else:
+                    annotation = closest_color_name
+                    color_occurrences[closest_color_name] = (keypoint, closest_color_distance)
 
-            # Write the color name next to the keypoint
-            font = cv2.FONT_HERSHEY_SIMPLEX
-            font_scale = 1
-            font_thickness = 2
-            text_size, _ = cv2.getTextSize(closest_color_name, font, font_scale, font_thickness)
-            text_origin = (x - radius, y + radius + text_size[1] + 5)
-            cv2.putText(annotated_image, closest_color_name, text_origin, font, font_scale, (0, 0, 255), font_thickness)
+            keypoint_annotations[keypoint] = annotation
+        else:
+            keypoint_annotations[keypoint] = "unknown"
 
-    return annotated_image
+    for keypoint, annotation in keypoint_annotations.items():
+        x, y = int(keypoint.pt[0]), int(keypoint.pt[1])
+        radius = int(keypoint.size / 2)
+
+        # Draw a circle around the keypoint
+        cv2.circle(annotated_image, (x, y), radius, (0, 255, 0), 2)
+
+        # Write the color name next to the keypoint
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 1
+        font_thickness = 2
+        text_size, _ = cv2.getTextSize(annotation, font, font_scale, font_thickness)
+        text_origin = (x - radius, y + radius + text_size[1] + 5)
+        cv2.putText(annotated_image, annotation, text_origin, font, font_scale, (0, 0, 255), font_thickness)
+
+    return annotated_image, keypoint_annotations
+
+def save_keypoint_data(keypoints, annotations, data_structure, project_folder, parent_folder, folder, image_no):
+    if project_folder not in data_structure:
+        data_structure[project_folder] = {}
+    
+    if parent_folder not in data_structure[project_folder]:
+        data_structure[project_folder][parent_folder] = {}
+    
+    if folder not in data_structure[project_folder][parent_folder]:
+        data_structure[project_folder][parent_folder][folder] = {}
+    
+    if image_no not in data_structure[project_folder][parent_folder][folder]:
+        data_structure[project_folder][parent_folder][folder][image_no] = {}
+
+    for keypoint in keypoints:
+        x, y = int(keypoint.pt[0]), int(keypoint.pt[1])
+        print(annotations)
+        color_name = annotations[keypoint]
+        if color_name not in data_structure[project_folder][parent_folder][folder]:
+            data_structure[project_folder][parent_folder][folder][image_no][color_name] = ()
+
+        data_structure[project_folder][parent_folder][folder][image_no][color_name] = (x, y)
+    return data_structure
 
 if __name__ == "__main__":
     rootdir = 'experiment_analysis/data/generated_data/scanned2/'
     savedir = 'experiment_analysis/data/generated_data/blobs/'
+    data = []
+    data_structure = {}
     for subdir, dirs, files in os.walk(rootdir):
         for i, file in enumerate(files):
             f = os.path.join(subdir, file)
@@ -503,19 +286,18 @@ if __name__ == "__main__":
             if '.DS_Store' in f:
                 continue
             else:
-                dot_detector = DotDetector(file_path=f, img_no=i)
-                image = dot_detector.run_blob_detection()
                 directory = savedir + parent + '/' + folder + '/'
                 ai = detect_colored_blobs(f)
+                keypoints, annotations = ai["keypoints"], ai["annotations"]
+                keypoint_data = save_keypoint_data(keypoints, annotations, data_structure, project_folder, parent, folder, i)
+                print(keypoint_data)
+                data.append(keypoint_data)
+
                 # Check if the directory exists
                 if not os.path.exists(directory):
                     # If it doesn't exist, create it
                     os.makedirs(directory)
-                print("IMAGE NO:", i)
-                # cv2.imwrite(directory + 'colour_detected_image_no{}.jpg'.format(i), image)
 
                 # Usage example
-                processor = ImageProcessor(cv2.imread(f))
-                result = processor.detect_colors_in_image()
-                # cv2.imwrite(directory + 'colour_detected_image_no{}.jpg'.format(i), result)
-                cv2.imwrite(directory + 'obj_detected_image_no{}.jpg'.format(i), ai)
+                cv2.imwrite(directory + 'obj_detected_image_no{}.jpg'.format(i), ai['image'])
+    print(data)
