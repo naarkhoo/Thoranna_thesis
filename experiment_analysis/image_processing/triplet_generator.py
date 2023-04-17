@@ -1,55 +1,113 @@
+import json
+import math
+from itertools import combinations
+from collections import Counter
+from scipy.stats import chi2_contingency
+import numpy as np
+from scipy.stats import binom
 import random
-from sklearn.metrics.pairwise import euclidean_distances
 
-class TripletGenerator:
-    abs_color_ids = {
-        'round_1': {
-            'brown': 9,
-            'blue': 5,
-            'red': 3,
-            'green': 2,
-            'purple': 6,
-            'pink': 7,
-            'grey': 8,
-            'light-pink': 4,
-            'orange': 1,
-            'yellow': 10
-        },
-        'round_2': {
-            'brown': 29,
-            'blue': 25,
-            'red': 23,
-            'green': 22,
-            'purple': 26,
-            'pink': 27,
-            'grey': 28,
-            'light-pink': 24,
-            'orange': 21,
-            'yellow': 30
-        }
+def coin_bias_test(triplet_counter):
+    observed_frequencies = []
+
+    for triplet, frequency in triplet_counter.items():
+        opposite_triplet = (triplet[0], triplet[2], triplet[1])
+        opposite_frequency = triplet_counter[opposite_triplet]
+        observed_frequencies.append([frequency, opposite_frequency])
+
+    chi2, p_value, _, _ = chi2_contingency(observed_frequencies, correction=False)
+
+    return p_value
+
+def euclidean_distance(point1, point2):
+    print(point1)
+    return math.sqrt((int(point1[0]) - int(point2[0])) ** 2 + (int(point1[1]) - int(point2[1])) ** 2)
+
+def process_experiment_round(experiment_round_data):
+    
+    distances = {
+        (id1, id2): euclidean_distance(coords1, coords2)
+        for (id1, [coords1, _]), (id2, [coords2, _]) in combinations(experiment_round_data.items(), 2)
     }
 
-    def __init__(self):
-        pass
+    triplets = [
+        (id1, id2, id3)
+        for (id1, id2), dist_ij in distances.items()
+        for (id3, _), dist_ik in distances.items()
+        if id1 != id3 and dist_ij < dist_ik and id2 != id3
+    ]
 
-    def generate_triplets(self, centers, round_id):
-        abs_color_ids = self.abs_color_ids[round_id]
-        dot_distances = euclidean_distances(list(centers.values()), list(centers.values())).tolist()
-        triplets = []
-        color_keys = list(centers.keys())
-        
-        for i, c1 in enumerate(color_keys):
-            for j, c2 in enumerate(color_keys):
-                for k, c3 in enumerate(color_keys):
-                    if i != j and i != k and j != k:
-                        if dot_distances[i][j] > dot_distances[i][k]:
-                            triplet = (abs_color_ids[c1], abs_color_ids[c3], abs_color_ids[c2])
-                        elif dot_distances[i][j] < dot_distances[i][k]:
-                            triplet = (abs_color_ids[c1], abs_color_ids[c2], abs_color_ids[c3])
-                        else:
-                            a, b = random.sample([c2, c3], 2)
-                            triplet = (abs_color_ids[c1], abs_color_ids[a], abs_color_ids[b])
+    return triplets
 
-                        if triplet not in triplets:
-                            triplets.append(triplet)
-        return triplets
+def process_data(data):
+    all_triplets = []
+
+    for experiment in data:
+        generated_data = experiment["generated_data"]
+
+        for experiment_key, experiment_data in generated_data.items():
+            for round_key, round_data in experiment_data.items():
+                for exp_num, experiment_round_data in round_data.items():
+                    print(experiment_round_data)
+                    triplets = process_experiment_round(experiment_round_data)
+                    all_triplets.extend(triplets)
+
+    return all_triplets
+
+def perform_chi_square_test(triplet_freq, opposite_triplet_freq):
+    total_freq = triplet_freq + opposite_triplet_freq
+    observed = np.array([triplet_freq, opposite_triplet_freq])
+    expected = np.array([total_freq / 2, total_freq / 2])
+    chi2, p_value = chi2_contingency([observed, expected], correction=False)[:2]
+    return p_value
+
+def cohen_d(triplet_freq, opposite_triplet_freq):
+    total_freq = triplet_freq + opposite_triplet_freq
+    pooled_std_dev = np.sqrt(((total_freq - 1) * (triplet_freq - opposite_triplet_freq) ** 2) / total_freq)
+    if pooled_std_dev == 0:
+        return 0
+    return (triplet_freq - opposite_triplet_freq) / pooled_std_dev
+
+
+if __name__ == "__main__":
+    all_triplets = []
+
+    with open('data_new.json', 'r') as json_file:
+        data = json.load(json_file)
+
+    generated_data = data["generated_data"]
+
+    for experiment_key, experiment_data in generated_data.items():
+        for round_key, round_data in experiment_data.items():
+            for exp_num, experiment_round_data in round_data.items():
+                triplets = process_experiment_round(experiment_round_data)
+                all_triplets.extend(triplets)
+
+    with open('all_triplets1.json', 'w') as json_file:
+        json.dump(all_triplets, json_file)
+
+    triplet_counter = Counter(all_triplets)
+    sorted_triplets = sorted(triplet_counter.items(), key=lambda x: x[1], reverse=True)
+    top_n_triplets = 10
+    print(f"Top {top_n_triplets} most common triplets:")
+    for i, (triplet, frequency) in enumerate(sorted_triplets[:top_n_triplets], 1):
+        opposite_triplet = (triplet[0], triplet[2], triplet[1])
+        opposite_frequency = triplet_counter[opposite_triplet]
+        p_value = perform_chi_square_test(frequency, opposite_frequency)
+        effect_size = cohen_d(frequency, opposite_frequency)
+        effect = "Yes" if effect_size >= 0.2 else "No"
+        significant = "Yes" if p_value < 0.05 else "No"
+        print(f"{i}. Triplet: {triplet}, Frequency: {frequency}, Opposite Triplet: {opposite_triplet}, Opposite Frequency: {opposite_frequency}, p-value: {p_value:.4f}, Statistically Significant: {significant}, Effect: {effect}")
+
+    p_value = coin_bias_test(triplet_counter)
+    print(f"The p-value for the coin bias test is: {p_value:.4f}")
+
+    # mean, var = binom.stats(n=len(sorted_triplets), p=0.5)
+    # print("Num triplets: ", len(sorted_triplets))
+    # print("Mean: ", mean)
+    # print("Variance: ", var)
+
+    if p_value < 0.05:
+        print("The coin is biased (the frequency of triplets and opposite triplets is significantly different).")
+    else:
+        print("The coin is not biased (the frequency of triplets and opposite triplets is not significantly different).")

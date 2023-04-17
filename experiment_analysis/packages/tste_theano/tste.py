@@ -29,7 +29,7 @@ Python and Theano port: (C) Michael Wilber, 2013, UC San Diego
 
 """
 
-USING_THEANO = False
+USING_THEANO = True
 
 import numpy as np
 
