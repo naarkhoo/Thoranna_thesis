@@ -29,13 +29,15 @@ WINE_ID_38 = 38
 WINE_ID_39 = 39
 WINE_ID_44 = 44
 WINE_ID_60 = 60
+WINE_ID_61 = 61
 WINE_ID_64 = 64
+WINE_ID_65 = 65
 WINE_ID_70 = 70
 
 # Duplicates = 1 + 29 + 39  
 
 WINES = {'experiment_dtu_13_03': {'round_1': {'yellow': 0, 'brown': WINE_ID_1, 'grey': 2, 'orange': 3,
-                                              'light-purple': 4, 'green': 5, 'red': 7, 'pink': WINE_ID_8, 'blue': WINE_ID_9},
+                                              'light-purple': 4, 'green': 5, 'purple': 6, 'red': 7, 'pink': WINE_ID_8, 'blue': WINE_ID_9},
                                   'round_2': {'yellow': 10, 'brown': 11, 'grey': 12, 'orange': 13, 'light-purple': 14,
                                               'green': 15, 'purple': 16, 'red': 17, 'pink': 18, 'blue': WINE_ID_1,
                                               'black': 19, 'gold': 20, 'bright-green': 21, 'white': 22, 'light-pink': 23}},
@@ -49,11 +51,11 @@ WINES = {'experiment_dtu_13_03': {'round_1': {'yellow': 0, 'brown': WINE_ID_1, '
                                              'purple': WINE_ID_44, 'red': 45, 'pink': 46, 'blue': 47},
                                  'round_2': {'yellow': 48, 'brown': 49, 'grey': 50, 'orange': 51,
                                              'purple': 52, 'green': 53, 'light-purple': 54, 'red': 55, 'blue': WINE_ID_39,
-                                             'pink': 56, 'bright-green': 57, 'black': 58, 'gold': 59, 'white': WINE_ID_60, 'light-pink': 61}},
-        'experiment_dtu_20_03': {'round_1': {'blue': 62, 'black': 63, 'purple': WINE_ID_64, 'light-pink': 65, 'gold': 66, 'red': 67,
-                                             'yellow': 68, 'white': 69, 'pink': WINE_ID_9, 'orange': 70, 'brown': 71, 'bright-green': 72,
+                                             'pink': 56, 'bright-green': 57, 'black': 58, 'gold': 59, 'white': WINE_ID_60, 'light-pink': WINE_ID_61}},
+        'experiment_dtu_20_03': {'round_1': {'blue': 62, 'black': 63, 'purple': WINE_ID_64, 'light-pink': WINE_ID_65, 'gold': 66, 'red': 67,
+                                             'yellow': 68, 'white': 69, 'pink': WINE_ID_9, 'orange': WINE_ID_70, 'brown': 71, 'bright-green': 72,
                                              'grey': 73, 'green': 74, 'light-purple': 75},
-                                'round_2': {'blue': 62, 'black': 63, 'purple': WINE_ID_64, 'light-pink': 65, 'gold': 66, 'red': 67,
+                                'round_2': {'blue': 62, 'black': 63, 'purple': WINE_ID_64, 'light-pink': WINE_ID_65, 'gold': 66, 'red': 67,
                                             'yellow': 68, 'white': 69, 'pink': WINE_ID_9, 'orange': WINE_ID_70, 'brown': 71, 'bright-green': 72,
                                             'grey': 73, 'green': 74, 'light-purple': 75}},
         'experiment_dtu_21_03': {'round_1': {'blue': 76, 'gold': 77, 'green': 78, 'brown': 79, 'bright-green': 80, 'red': 81, 'white': 82,
@@ -68,10 +70,10 @@ WINES = {'experiment_dtu_13_03': {'round_1': {'yellow': 0, 'brown': WINE_ID_1, '
                                             'round_2': {'light-purple': 90, 'white': 91, 'brown': 92, 'green': 93, 'pink': WINE_ID_44, 'yellow': WINE_ID_64,
                                                        'bright-green': 94, 'gold': 95, 'purple': 96, 'red': 97, 'grey': 98, 'blue': 99,
                                                        'pink': WINE_ID_24, 'orange': 100, 'black': WINE_ID_60},
-                                            'round_3': {'light-purple': 101, 'white': 102, 'brown': WINE_ID_8, 'light-pink': 103, 'green': WINE_ID_38, 'yellow': 104,
-                                                        'gold': 105, 'purple': 106, 'red': 107, 'grey': 108}},
-        'experiment_vivino_31_03': {'round_1': {'yellow': WINE_ID_44, 'red': 109, 'black': 110, 'orange': 111, 'purple': 112, 'pink': 113,
-                                                'blue': 114, 'light-purple': 115, 'gold': 116, 'bright-green': 117}}
+                                            'round_3': {'light-purple': 101, 'white': 102, 'brown': WINE_ID_8, 'light-pink': 103, 'green': WINE_ID_38, 'gold': 104,
+                                                        'purple': WINE_ID_61, 'red': WINE_ID_65, 'grey': 105}},
+        'experiment_vivino_31_03': {'round_1': {'yellow': WINE_ID_44, 'red': 106, 'black': 107, 'orange': 108, 'purple': 109, 'pink': 110,
+                                                'blue': 111, 'light-purple': 112, 'gold': 113, 'bright-green': 114}}
 }
 
 
@@ -349,5 +351,5 @@ if __name__ == "__main__":
     # Save as .json file
     # converted_data_structure = convert_dict_values_to_list(data_structure)
     print(data_structure['generated_data'][ "experiment_vivino_31_03"]["round_1_images"]["experiment_no_6"])
-    with open('data_new.json', 'w') as json_file:
+    with open('data_new1.json', 'w') as json_file:
         json.dump(data_structure, json_file, indent=4)

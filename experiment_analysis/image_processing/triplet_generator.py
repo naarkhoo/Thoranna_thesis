@@ -72,7 +72,7 @@ def cohen_d(triplet_freq, opposite_triplet_freq):
 if __name__ == "__main__":
     all_triplets = []
 
-    with open('data_new.json', 'r') as json_file:
+    with open('data_new1.json', 'r') as json_file:
         data = json.load(json_file)
 
     generated_data = data["generated_data"]
@@ -83,7 +83,7 @@ if __name__ == "__main__":
                 triplets = process_experiment_round(experiment_round_data)
                 all_triplets.extend(triplets)
 
-    with open('all_triplets1.json', 'w') as json_file:
+    with open('all_triplets3.json', 'w') as json_file:
         json.dump(all_triplets, json_file)
 
     triplet_counter = Counter(all_triplets)
