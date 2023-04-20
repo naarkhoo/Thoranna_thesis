@@ -2,16 +2,25 @@
 import json
 import numpy as np
 import pandas as pd
+from sklearn.cluster import KMeans
 
-from bokeh.plotting import figure, show
-from bokeh.layouts import gridplot
+from bokeh.io import curdoc
+from bokeh.plotting import figure, show, output_file
+from bokeh.layouts import gridplot, column
 from bokeh.models import (
     ColumnDataSource, HoverTool, PanTool, WheelZoomTool,
-    CategoricalColorMapper, TabPanel, Tabs,
+    CategoricalColorMapper, Legend, Column, Row, LegendItem, Panel, Tabs,
+    Toggle, CustomJS, Select, ColumnDataSource, CustomJS
 )
 from bokeh.palettes import Category20, Category20b, Category20c, Viridis256, Turbo256, Inferno256
 from experiment_analysis.packages.tste_theano.tste import tste
+
 import random
+from bokeh.layouts import row, Row
+import matplotlib as plt
+from matplotlib import cm
+
+PALETTE = cm.get_cmap("turbo").colors
 
 WINE_COUNTRY = {0: 'France',
                1: 'Italy',
@@ -945,7 +954,26 @@ WINE_GRAPE_SIMPLIFIED = {
         114: 'Blend'
     }
 
-   
+DICTIONARIES = {
+    "WINE_COUNTRY" : WINE_COUNTRY,
+    "WINE_SPECIFIC_LOCATION": WINE_LOC_SPEC,
+    "WINE_STYLE": WINE_STYLE,
+    "WINE_GRAPE": WINE_GRAPE_SIMPLIFIED,
+    "WINE_ALCOHOL_PERCENTAGE": WINE_ALCOHOL_PERCENTAGE,
+    "WINE_YEAR": WINE_YEAR,
+    "WINE_REGION": WINE_REGION,
+}
+
+layout = row()
+
+def update_plot(wine_to_locations):
+    grid, _ = make_grid(triplets_lis=triplets, wine_to_locations=wine_to_locations, exclude_country=None, cluster=False)
+    return grid
+
+def update(attr, old, new):
+    global layout
+    selected_dictionary = new
+    layout.children[1] = update_plot(DICTIONARIES[selected_dictionary])
 
 def load_triplets():
     '''
@@ -956,12 +984,14 @@ def load_triplets():
     
     # Convert wine IDs to integers
     triplets_arr = [[int(i), int(j), int(k)] for i, j, k in triplets_arr]
+
+    print("length of triplets array: ", len(triplets_arr))
     
     return triplets_arr
 
-def make_grid(triplets_lis, wine_to_locations, exclude_country=None):
+def get_embeddings(triplets_lis):
     '''
-    Function makes bokeh visualizations
+    Function calculates embeddings
     '''
     triplets_array = np.array(triplets_lis)
 
@@ -972,70 +1002,162 @@ def make_grid(triplets_lis, wine_to_locations, exclude_country=None):
         alpha=1,
         use_log=False
     )
-    print(embedding_tste)
-    print("n points in tste embedding: ", len(embedding_tste))
+    return embedding_tste
+
+def make_grid(embedding_tste, dictionary, name, exclude_category=None, cluster=False):
+    '''
+    Function makes bokeh visualizations
+    '''
 
     # Get unique IDs from the input triplets
-    unique_ids = list(wine_to_locations.keys())
+    unique_ids = list(dictionary.keys())
 
     # Create a dictionary to map the unique_ids to the corresponding embedding_tste
     id_to_embedding = {id: embedding_tste[idx] for idx, id in enumerate(unique_ids)}
     print(len(id_to_embedding.keys()))
 
     # Get the countries for each unique ID
-    countries = [wine_to_locations[id] for id in unique_ids]
+    countries = [dictionary[id] for id in unique_ids]
 
-    # Exclude the specified country
-    if exclude_country is not None:
+    # Exclude the specified category
+    if exclude_category is not None:
         indices_to_keep = [i for i, country in enumerate(countries) if country != exclude_country]
         unique_ids = [unique_ids[i] for i in indices_to_keep]
         countries = [countries[i] for i in indices_to_keep]
         embedding_tste = embedding_tste[indices_to_keep]
 
-    print("should match: ", len(countries))
 
-    source_tste = ColumnDataSource(data=dict(
+    if cluster:
+
+        kmeans = KMeans(n_clusters=3, random_state=42)
+        kmeans.fit(embedding_tste)
+
+        # Add the cluster labels to the data source
+        source_tste = ColumnDataSource(data=dict(
+            x=embedding_tste[:, 0],
+            y=embedding_tste[:, 1],
+            id=unique_ids,
+            label=[str(id) for id in unique_ids],
+            country=countries,
+            cluster=kmeans.labels_
+        ))
+        fig_tste = figure(tools=[PanTool(), WheelZoomTool()], title='t-STE', width=700, height=600)
+        large_palette = Category20[20]
+        palette = [large_palette[i % len(large_palette)] for i in range(3)]
+        hover_tste = HoverTool(tooltips=[("Data point: ", "@label"), ("ID: ", "@id"), ("Country: ", "@country"), ("Cluster: ", "@cluster")])
+        fig_tste.add_tools(hover_tste)
+    else:
+        source_tste = ColumnDataSource(data=dict(
         x=embedding_tste[:, 0],
         y=embedding_tste[:, 1],
         id=unique_ids,
         label=[str(id) for id in unique_ids],
         country=countries
-    ))
+        ))
 
-    # Set up the color mapper based on countries
-    unique_countries = list(set(wine_to_locations.values()))
+        # Set up the color mapper based on countries
+        unique_countries = list(set(dictionary.values()))
 
-    print(unique_countries)
+        # Generate a diverse palette by sampling from the colormap
+        num_colors = len(unique_countries)
 
-    # Combine the Category20, Category20b, and Category20c palettes
-    large_palette = Category20[20] + Category20b[20] + Category20c[20]
+        if num_colors > 40:
+            large_palette = PALETTE
+            random.shuffle(large_palette)
+            # Convert RGBA floats to hex strings for Bokeh
+            large_palette = [plt.colors.rgb2hex(color) for color in large_palette]
 
-    # Use the length of the combined palette as a modulo to ensure you stay within its range
-    palette = [large_palette[i % len(large_palette)] for i in range(len(unique_countries))]
+            # Assign the colors to the countries
+            palette = [large_palette[i % len(large_palette)] for i in range(num_colors)]
+        elif num_colors > 20:
+            palette = Category20b[20] + Category20c[20]
+            palette = [palette[i % len(palette)] for i in range(len(unique_countries))]
+        else:
+            palette = Category20[num_colors]
 
-    color_mapper = CategoricalColorMapper(factors=unique_countries, palette=palette)
+        color_mapper = CategoricalColorMapper(factors=unique_countries, palette=palette)
+        fig_tste = figure(tools=[PanTool(), WheelZoomTool()], title='t-STE', width=800, height=600)
+        hover_tste = HoverTool(tooltips=[("Data point: ", "@label"), ("ID: ", "@id"), ("Country: ", "@country")])
 
-    fig_tste = figure(tools=[PanTool(), WheelZoomTool()], title='t-STE', width=600, height=600)
-    hover_tste = HoverTool(tooltips=[("Data point: ", "@label"), ("ID: ", "@id"), ("Country: ", "@country")])
     fig_tste.add_tools(hover_tste)
-    fig_tste.scatter('x', 'y', source=source_tste, size=10, color={'field': 'country', 'transform': color_mapper})
+    fig_tste.scatter('x', 'y', source=source_tste, size=10, color={'field': 'country', 'transform': color_mapper}, legend_field='country')
+    fig_tste.legend.title = name
+    fig_tste.legend.label_text_font_size = '8pt'
+    fig_tste.legend.title_text_font_size = '10pt'
+    fig_tste.legend.title_text_font_style = 'bold'
+    fig_tste.legend.label_standoff = 5
+    fig_tste.legend.glyph_width = 10
+    fig_tste.legend.spacing = 5
+    fig_tste.legend.padding = 5
+
+    # Configure the legend location
+    fig_tste.legend.location = 'top_right'
+    fig_tste.legend.click_policy = 'hide'
 
     # Arrange the plots in a grid and display
-    grid = gridplot([[fig_tste]])
-    return grid, id_to_embedding
+    # grid = gridplot([[fig_tste]])
 
+    # Create a JavaScript callback to toggle the legend
+    toggle_callback = CustomJS(args=dict(legend=fig_tste.legend[0]), code="""
+        legend.visible = !legend.visible;
+    """)
 
+    # Create a toggle button and link it to the callback
+    toggle_button = Toggle(label="Hide/Show Legend", button_type="primary", active=True)
+    toggle_button.js_on_click(toggle_callback)
+
+    # Add the toggle button to the layout
+    layout = Row(Column(fig_tste), Column(toggle_button))
+
+    return layout, id_to_embedding
+
+# Add a function to create a plot for a given dictionary
+def create_plot(embeddings, dictionary, name):
+    grid, _ = make_grid(embedding_tste=embeddings, dictionary=dictionary, name=name, exclude_category=None, cluster=False)
+    return grid
 
 if __name__ == "__main__":
     # Load data 
     triplets = load_triplets()
+    embeddings = get_embeddings(triplets)
 
-    # Load triplet visualizations
-    WINE_GRAPE_FIRST_ELEMENT = {key: value[0] for key, value in WINE_GRAPE.items()}
-    grid1, _ = make_grid(triplets_lis=triplets, wine_to_locations=WINE_COUNTRY, exclude_country='Italy')
+    # Create plots for different dictionaries
+    plots = []
+    titles = []
+    for k, v in DICTIONARIES.items():
+        plots.append(create_plot(embeddings=embeddings, dictionary=v, name=k))
+        titles.append(k)
+    
+     # Create a Select widget with the titles of the plots as options
+    dropdown = Select(title="Choose a plot:", value=titles[0], options=titles)
 
-    # Make tab panels
-    tab1 = TabPanel(child=grid1, title="Experiments combined")
+    # Store the plots in a ColumnDataSource
+    source = ColumnDataSource(data=dict(plots=plots))
 
-    tabs = Tabs(tabs=[tab1])
-    show(tabs)
+    # Create a JavaScript callback to update the displayed plot based on the selected dropdown option
+    callback = CustomJS(args=dict(source=source, dropdown=dropdown), code="""
+        const index = dropdown.options.indexOf(dropdown.value);
+        const plots = source.data.plots;
+        for (let i = 0; i < plots.length; i++) {
+            plots[i].visible = i === index;
+        }
+    """)
+
+    # Link the Select widget to the callback
+    dropdown.js_on_change("value", callback)
+
+    # Set only the first plot as visible initially
+    for i, plot in enumerate(plots[1:], start=1):
+        plot.visible = False
+
+    # Combine the dropdown and plots in a layout
+    layout = Column(dropdown, *plots)
+
+    # Display the layout
+    output_file("embeddings_dropdown.html")
+    show(layout)
+
+
+
+
+

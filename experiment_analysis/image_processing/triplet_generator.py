@@ -6,6 +6,8 @@ from scipy.stats import chi2_contingency
 import numpy as np
 from scipy.stats import binom
 import random
+import numpy as np
+import matplotlib.pyplot as plt
 
 def coin_bias_test(triplet_counter):
     observed_frequencies = []
@@ -83,7 +85,7 @@ if __name__ == "__main__":
                 triplets = process_experiment_round(experiment_round_data)
                 all_triplets.extend(triplets)
 
-    with open('all_triplets3.json', 'w') as json_file:
+    with open('all_triplets4.json', 'w') as json_file:
         json.dump(all_triplets, json_file)
 
     triplet_counter = Counter(all_triplets)
@@ -102,10 +104,43 @@ if __name__ == "__main__":
     p_value = coin_bias_test(triplet_counter)
     print(f"The p-value for the coin bias test is: {p_value:.4f}")
 
-    # mean, var = binom.stats(n=len(sorted_triplets), p=0.5)
-    # print("Num triplets: ", len(sorted_triplets))
-    # print("Mean: ", mean)
-    # print("Variance: ", var)
+    significant_triplets_count = 0
+    non_significant_triplets_count = 0
+    significant_triplets = []
+    p_vals = []
+
+    for i, (triplet, frequency) in enumerate(sorted_triplets, 1):
+        opposite_triplet = (triplet[0], triplet[2], triplet[1])
+        opposite_frequency = triplet_counter[opposite_triplet]
+        p_value = perform_chi_square_test(frequency, opposite_frequency)
+        p_vals.append(p_value)
+        effect_size = cohen_d(frequency, opposite_frequency)
+        effect = "Yes" if effect_size >= 0.2 else "No"
+        significant = "Yes" if p_value < 0.25 else "No"
+
+        if significant == "Yes":
+            significant_triplets_count += 1
+            significant_triplets.append(triplet)
+        else:
+            non_significant_triplets_count += 1
+    
+    with open('significant_triplets.json', 'w') as json_file:
+        json.dump(significant_triplets, json_file)
+    
+    # Create a histogram of the p-values
+    plt.hist(p_vals, bins=np.linspace(0, 1, 21), alpha=0.75, color='blue', edgecolor='black')
+
+    # Add labels and a title
+    plt.xlabel('P-value')
+    plt.ylabel('Frequency')
+    plt.title('Histogram of P-values')
+
+    # Display the plot
+    plt.show()
+
+    print(f"Number of significant triplets: {significant_triplets_count}")
+    print(f"Number of non-significant triplets: {non_significant_triplets_count}")
+    print("Ratio of significant over not significant: ", significant_triplets_count / non_significant_triplets_count)
 
     if p_value < 0.05:
         print("The coin is biased (the frequency of triplets and opposite triplets is significantly different).")
